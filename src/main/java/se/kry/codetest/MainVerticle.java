@@ -11,8 +11,9 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
-import io.vertx.ext.web.handler.StaticHandler;
+import io.vertx.ext.web.handler.CorsHandler;
 import se.kry.codetest.registry.model.Service;
+import se.kry.codetest.registry.model.ServiceStatus;
 import se.kry.codetest.registry.ServiceRegistry;
 import se.kry.codetest.registry.ServiceRegistryFactory;
 
@@ -75,9 +76,17 @@ public class MainVerticle extends AbstractVerticle {
    * Set the different routes for this service.
    */
   private void setRoutes(Router router){
-    router.route("/*").handler(StaticHandler.create());
+    router.route("/*").handler(
+    CorsHandler.create("http://localhost:3000")
+    .allowedMethod(io.vertx.core.http.HttpMethod.GET)
+    .allowedMethod(io.vertx.core.http.HttpMethod.POST)
+    .allowedMethod(io.vertx.core.http.HttpMethod.PUT)
+    .allowedMethod(io.vertx.core.http.HttpMethod.DELETE)
+    .allowedMethod(io.vertx.core.http.HttpMethod.OPTIONS)
+    );
     router.get("/service").handler(this::handleGetServices);
     router.post("/service").handler(this::handlePostService);
+    router.put("/service").handler(this::handlePutService);
     router.delete("/service").handler(this::handleDeleteService);
   }
 
@@ -86,7 +95,6 @@ public class MainVerticle extends AbstractVerticle {
    * Returns the list of services in the registry.
    */
   private void handleGetServices(RoutingContext routingContext) {
-    System.out.println("GET");
     registry.getServices().setHandler(res -> {
       if (res.succeeded()) {
         final List<JsonObject> jsonServices = res.result()
@@ -94,7 +102,10 @@ public class MainVerticle extends AbstractVerticle {
                 .map(service ->
                              new JsonObject()
                                      .put("name", service.getName())
-                                     .put("status", Service.toString(service)))
+                                     .put("url", service.getUrl().toString())
+                                     .put("addTime", service.getAddTime())
+                                     .put("status", service.getStatus())
+                                     )
                 .collect(Collectors.toList());
         System.out.println("GET result" + jsonServices.size());
         routingContext.response()
@@ -113,6 +124,27 @@ public class MainVerticle extends AbstractVerticle {
     final JsonObject jsonBody = routingContext.getBodyAsJson();
     try {
       registry.addService(jsonBody.getString("name"), jsonBody.getString("url")).setHandler(
+              res -> handleResponse(res, routingContext));
+    } catch (IllegalArgumentException e) {
+        routingContext.response()
+                .putHeader("content-type", "application/json")
+                .setStatusMessage(e.toString())
+                .setStatusCode(400)
+                .end();
+    }
+  }
+
+  /**
+   * Handles the call to POST /service api
+   * Add a service to the registry given its name and url.
+   * Calling the service twice for the same service will fail.
+   */
+  private void handlePutService(RoutingContext routingContext) {
+    final JsonObject jsonBody = routingContext.getBodyAsJson();
+
+    try {
+      final ServiceStatus statusService = ServiceStatus.valueOf(jsonBody.getString("status"));
+      registry.updateServiceStatus(jsonBody.getString("name"), statusService).setHandler(
               res -> handleResponse(res, routingContext));
     } catch (IllegalArgumentException e) {
         routingContext.response()
@@ -160,6 +192,3 @@ public class MainVerticle extends AbstractVerticle {
     }
   }
 }
-
-
-

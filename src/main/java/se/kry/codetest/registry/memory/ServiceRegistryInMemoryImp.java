@@ -25,19 +25,19 @@ public class ServiceRegistryInMemoryImp implements ServiceRegistry {
   public Future<Boolean> addService(String serviceName, String serviceUrl) throws IllegalArgumentException {
     validateServiceName(serviceName);
     final URL url = validateServiceUrl(serviceUrl);
-
     final Service service = new Service();
     service.setName(serviceName);
     service.setUrl(url);
     service.setStatus(ServiceStatus.UNKNOWN);
     service.setAddTime(Instant.now());
+
     this.registry.putIfAbsent(serviceName, service);
     return Future.succeededFuture(true);
   }
 
   @Override
   public Future<List<Service>> getServices() {
-    return Future.succeededFuture(this.registry.values().stream().collect(Collectors.toList()));
+      return Future.succeededFuture(this.registry.values().stream().collect(Collectors.toList()));
   }
 
   @Override
@@ -45,8 +45,10 @@ public class ServiceRegistryInMemoryImp implements ServiceRegistry {
     if (!this.registry.containsKey(serviceName)) {
       throw new IllegalArgumentException("Service does not exist in the registry");
     }
+
     final Service service = this.registry.get(serviceName);
     service.setStatus(status);
+
     this.registry.put(serviceName, service);
     return Future.succeededFuture(true);
   }

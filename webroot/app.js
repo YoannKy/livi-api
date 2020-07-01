@@ -13,7 +13,13 @@ const ServicePoller = () => {
   const [error, setError] = React.useState(null);
 
   React.useEffect(() => {
-    fetch("/service")
+    fetch("/service", {
+      headers: {
+       Accept: 'application/json',
+       'Content-Type': 'application/json'
+     },
+     mode: 'cors',
+    })
       .then((res) => (services = res))
       .catch(setError);
   }, []);
@@ -33,11 +39,17 @@ const ServicePoller = () => {
 
       <a
         href="#"
-        onClick=${() =>
+        onClick=${() => {
+          console.log(JSON.stringify({ url: document.getElementById("url-input").value, name: 'test' }))
           fetch("/service", {
-            method: "post",
-            body: { url: document.getElementById("url-input").value },
-          }).then(() => location.reload())}
+            headers: {
+             Accept: 'application/json',
+             'Content-Type': 'application/json'
+           },
+            method: 'POST',
+            body:{ url: document.getElementById("url-input").value, name: 'test' },
+          })
+        }}
         style=${{ marginLeft: "1rem" }}
       >
         Save
@@ -55,4 +67,3 @@ const ServicePoller = () => {
 };
 
 ReactDOM.render(React.createElement(ServicePoller), document.body);
-
